@@ -19,6 +19,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status as http_status
 from sqlalchemy.orm import Session
 
+from app.core.storage import resolve_media_url
 from app.crud import admin_moderation as crud
 from app.crud.admin import AdminError
 from app.db.session import get_db
@@ -53,7 +54,7 @@ def _video_out(video, owner) -> dict:
         },
         "status": video.status,
         "view_count": video.view_count or 0,
-        "thumbnail_url": video.thumbnail_url,
+        "thumbnail_url": resolve_media_url(video.thumbnail_url),
         "moderation_reason": video.moderation_reason,
         "moderated_at": video.moderated_at,
         "created_at": video.created_at,
@@ -62,6 +63,11 @@ def _video_out(video, owner) -> dict:
 
 def _product_out(product, shop) -> dict:
     thumb = getattr(product, "thumbnail_url", None)
+    if not thumb and getattr(product, "images", None):
+        primary = next((img for img in product.images if getattr(img, "is_primary", False)), None)
+        chosen = primary or product.images[0]
+        thumb = getattr(chosen, "object_key", None)
+    thumb = resolve_media_url(thumb)
     return {
         "id": product.id,
         "name": product.name,
