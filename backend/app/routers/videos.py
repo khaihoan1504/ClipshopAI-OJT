@@ -186,26 +186,42 @@ def create_video_direct(
     if not payload.video_key.startswith("videos/") or not payload.thumbnail_key.startswith("covers/"):
         raise HTTPException(status_code=422, detail="Key tệp tin R2 không hợp lệ.")
 
+    # Checkpoint 1: Xác nhận cả video và thumbnail đã tồn tại trên R2 trước khi ghi DB
+    try:
+        storage.client.head_object(Bucket=storage.bucket, Key=payload.video_key)
+        storage.client.head_object(Bucket=storage.bucket, Key=payload.thumbnail_key)
+    except Exception as err:
+        storage.delete(payload.video_key)
+        storage.delete(payload.thumbnail_key)
+        raise HTTPException(
+            status_code=400,
+            detail="Tệp video hoặc ảnh bìa chưa tải lên R2 hoàn tất.",
+        ) from err
+
     video_url = f"{storage.public_url}/{payload.video_key}"
     thumbnail_url = f"{storage.public_url}/{payload.thumbnail_key}"
 
-    record = create_uploaded_video(
-        db=db,
-        user_id=user.id,
-        title=payload.title.strip(),
-        description=payload.description,
-        video_url=video_url,
-        thumbnail_url=thumbnail_url,
-        duration_seconds=payload.duration_seconds,
-    )
-    db.commit()
+    # Checkpoint 2: Transaction DB duy nhất — chỉ commit khi tạo video + gắn sản phẩm thành công, lỗi thì rollback cả DB lẫn R2
+    try:
+        record = create_uploaded_video(
+            db=db,
+            user_id=user.id,
+            title=payload.title.strip(),
+            description=payload.description,
+            video_url=video_url,
+            thumbnail_url=thumbnail_url,
+            duration_seconds=payload.duration_seconds,
+        )
 
-    if payload.product_ids:
-        try:
+        if payload.product_ids:
             set_video_products(db, record.id, user.id, [int(x) for x in payload.product_ids])
-            db.commit()
-        except Exception as err:
-            logging.getLogger(__name__).warning("Không gắn được sản phẩm khi tạo video direct: %s", err)
+
+        db.commit()
+    except Exception:
+        db.rollback()
+        storage.delete(payload.video_key)
+        storage.delete(payload.thumbnail_key)
+        raise
 
     return {
         "id": record.id,
