@@ -590,8 +590,34 @@ async function loadSingleComments(videoId) {
     }
 
     listEl.innerHTML = "";
+    const byId = new Map();
+    comments.forEach((c) => byId.set(c.id, c));
+
+    const roots = comments.filter((c) => !c.parent_id || !byId.has(c.parent_id));
+    const repliesByParent = new Map();
     comments.forEach((c) => {
-      listEl.appendChild(renderSingleCommentRow(c));
+      if (c.parent_id && byId.has(c.parent_id)) {
+        if (!repliesByParent.has(c.parent_id)) repliesByParent.set(c.parent_id, []);
+        repliesByParent.get(c.parent_id).push(c);
+      }
+    });
+
+    roots.forEach((c) => {
+      const thread = document.createElement("div");
+      thread.className = "comment-thread";
+      thread.id = `single-thread-${c.id}`;
+      thread.appendChild(renderSingleCommentRow(c));
+
+      const repliesBox = document.createElement("div");
+      repliesBox.className = "comment-replies";
+      repliesBox.id = `single-replies-${c.id}`;
+      const childList = repliesByParent.get(c.id) || [];
+      const parentName = c.display_name || c.username || `User #${c.user_id}`;
+      childList.forEach((r) => {
+        repliesBox.appendChild(renderSingleCommentRow(r, parentName));
+      });
+      thread.appendChild(repliesBox);
+      listEl.appendChild(thread);
     });
   } catch (err) {
     listEl.innerHTML = `<div class="text-error" style="text-align:center;padding:20px;">Không thể tải bình luận: ${escapeHtml(
@@ -600,9 +626,9 @@ async function loadSingleComments(videoId) {
   }
 }
 
-function renderSingleCommentRow(comment) {
+function renderSingleCommentRow(comment, parentAuthorName = null) {
   const row = document.createElement("div");
-  row.className = "comment-row";
+  row.className = comment.parent_id ? "comment-row is-reply" : "comment-row";
   row.id = `single-comment-${comment.id}`;
 
   const currentU = typeof getCurrentUser === "function" ? getCurrentUser() : null;
@@ -625,7 +651,7 @@ function renderSingleCommentRow(comment) {
       <div class="comment-text">
         ${
           comment.parent_id
-            ? `<span class="reply-badge-target">Trả lời #${comment.parent_id}</span>`
+            ? `<span class="reply-badge-target">@${escapeHtml(parentAuthorName || `#${comment.parent_id}`)}</span>`
             : ""
         }
         ${escapeHtml(comment.content)}

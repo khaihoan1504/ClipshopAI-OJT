@@ -507,6 +507,26 @@ th { font-size: 13px; color: var(--color-muted); text-transform: uppercase; }
   border-radius: 4px;
   margin-right: 4px;
 }
+.comment-thread {
+  margin-bottom: 4px;
+}
+.comment-replies {
+  margin-left: 48px;
+  padding-left: 12px;
+  border-left: 2px solid #e5e7eb;
+  margin-top: -4px;
+  margin-bottom: 12px;
+}
+.comment-replies:empty {
+  display: none;
+}
+.comment-row.is-reply {
+  margin-bottom: 10px;
+}
+.comment-row.is-reply .comment-avatar {
+  width: 28px;
+  height: 28px;
+}
 
 /* Khung nhập bình luận */
 .comment-replying-banner {
