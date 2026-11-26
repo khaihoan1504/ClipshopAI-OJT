@@ -442,7 +442,7 @@ async function handleSubmitUpload(e) {
         description: finalDescription || null,
         video_key: directPrep.video_key,
         thumbnail_key: directPrep.thumbnail_key,
-        duration_seconds: Math.round(selectedVideoDuration || 0),
+        duration_seconds: Math.round(Number.isFinite(videoPlayer.duration) ? videoPlayer.duration : 0),
         product_ids: Array.from(selectedProductIds),
       });
     } else {
