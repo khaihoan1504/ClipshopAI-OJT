@@ -754,9 +754,11 @@ function formatDuration(seconds) {
 
 function formatTimeAgo(dateString) {
   if (!dateString) return "";
-  const date = new Date(dateString);
+  let normalized = String(dateString).trim().replace(" ", "T");
+  if (!/[zZ]|[+-]\d{2}:?\d{2}$/.test(normalized)) normalized += "Z";
+  const date = new Date(normalized);
   const now = new Date();
-  const diffSec = Math.floor((now - date) / 1000);
+  const diffSec = Math.max(0, Math.floor((now - date) / 1000));
 
   if (diffSec < 60) return "Vừa xong";
   if (diffSec < 3600) return `${Math.floor(diffSec / 60)} phút trước`;

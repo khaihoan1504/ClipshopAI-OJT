@@ -600,10 +600,12 @@ function initAiChatbotWidget() {
 
 function formatNotifTime(dateStr) {
   if (!dateStr) return "";
-  const d = new Date(dateStr);
+  let normalized = String(dateStr).trim().replace(" ", "T");
+  if (!/[zZ]|[+-]\d{2}:?\d{2}$/.test(normalized)) normalized += "Z";
+  const d = new Date(normalized);
   if (isNaN(d.getTime())) return "";
   const now = new Date();
-  const diffSec = Math.floor((now - d) / 1000);
+  const diffSec = Math.max(0, Math.floor((now - d) / 1000));
   if (diffSec < 60) return "Vừa xong";
   if (diffSec < 3600) return `${Math.floor(diffSec / 60)} phút trước`;
   if (diffSec < 86400) return `${Math.floor(diffSec / 3600)} giờ trước`;
