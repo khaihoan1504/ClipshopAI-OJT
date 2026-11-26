@@ -4,11 +4,13 @@ import re
 import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.core.storage import resolve_media_url
+from app.core.storage import R2Storage, get_storage, resolve_media_url
 from app.core.video_auth import get_video_user
 from app.dependencies.auth import get_current_user, get_optional_user
 from app.core.video_media import (
@@ -40,11 +42,30 @@ from app.crud.video import (
     set_video_products,
     update_video_description,
 )
-from app.core.storage import get_storage
 
 router = APIRouter(prefix="/videos", tags=["Videos"])
 
 UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads"
+MAX_DIRECT_VIDEO_BYTES = 50 * 1024 * 1024
+MAX_DIRECT_THUMB_BYTES = 5 * 1024 * 1024
+
+
+class DirectUploadUrlsRequest(BaseModel):
+    video_filename: str = Field(min_length=1, max_length=255)
+    video_content_type: str = Field(default="video/mp4", max_length=100)
+    video_size_bytes: int = Field(gt=0)
+    thumbnail_filename: str = Field(min_length=1, max_length=255)
+    thumbnail_content_type: str = Field(default="image/jpeg", max_length=100)
+    thumbnail_size_bytes: int = Field(gt=0)
+
+
+class DirectVideoCreateRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    description: VideoDescription | None = None
+    video_key: str = Field(min_length=1, max_length=512)
+    thumbnail_key: str = Field(min_length=1, max_length=512)
+    duration_seconds: int = Field(default=0, ge=0, le=120)
+    product_ids: list[int] | None = None
 
 
 def save_uploaded_video(
@@ -97,6 +118,102 @@ def remove_uploaded_files(video_url, thumbnail_url):
             storage.delete(thumbnail_url)
         except Exception:
             logging.getLogger(__name__).warning("Không thể dọn thumbnail: %s", thumbnail_url)
+
+@router.post("/upload-urls")
+def create_direct_upload_urls(
+    payload: DirectUploadUrlsRequest,
+    user: User = Depends(get_video_user),
+):
+    if payload.video_size_bytes > MAX_DIRECT_VIDEO_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="Dung lượng video vượt quá giới hạn tối đa 50MB.",
+        )
+    if payload.thumbnail_size_bytes > MAX_DIRECT_THUMB_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="Dung lượng ảnh bìa vượt quá giới hạn tối đa 5MB.",
+        )
+
+    storage = get_storage()
+    if not isinstance(storage, R2Storage):
+        return {"direct_upload": False}
+
+    video_ext = Path(payload.video_filename).suffix.lower()
+    if video_ext not in {".mp4", ".webm", ".mov"}:
+        video_ext = ".mp4"
+
+    thumb_ext = Path(payload.thumbnail_filename).suffix.lower()
+    if thumb_ext not in {".jpg", ".jpeg", ".png", ".webp"}:
+        thumb_ext = ".jpg"
+
+    video_key = f"videos/{uuid4().hex}{video_ext}"
+    cover_key = f"covers/{uuid4().hex}{thumb_ext}"
+
+    video_ct = (payload.video_content_type or "video/mp4").split(";")[0].strip()
+    thumb_ct = (payload.thumbnail_content_type or "image/jpeg").split(";")[0].strip()
+
+    video_upload_url = storage.client.generate_presigned_url(
+        "put_object",
+        Params={"Bucket": storage.bucket, "Key": video_key, "ContentType": video_ct},
+        ExpiresIn=900,
+    )
+    thumbnail_upload_url = storage.client.generate_presigned_url(
+        "put_object",
+        Params={"Bucket": storage.bucket, "Key": cover_key, "ContentType": thumb_ct},
+        ExpiresIn=900,
+    )
+
+    return {
+        "direct_upload": True,
+        "video_upload_url": video_upload_url,
+        "video_key": video_key,
+        "thumbnail_upload_url": thumbnail_upload_url,
+        "thumbnail_key": cover_key,
+    }
+
+
+@router.post("/direct", status_code=201)
+def create_video_direct(
+    payload: DirectVideoCreateRequest,
+    user: User = Depends(get_video_user),
+    db: Session = Depends(get_db),
+):
+    storage = get_storage()
+    if not isinstance(storage, R2Storage):
+        raise HTTPException(status_code=400, detail="Direct R2 upload chưa được bật.")
+
+    if not payload.video_key.startswith("videos/") or not payload.thumbnail_key.startswith("covers/"):
+        raise HTTPException(status_code=422, detail="Key tệp tin R2 không hợp lệ.")
+
+    video_url = f"{storage.public_url}/{payload.video_key}"
+    thumbnail_url = f"{storage.public_url}/{payload.thumbnail_key}"
+
+    record = create_uploaded_video(
+        db=db,
+        user_id=user.id,
+        title=payload.title.strip(),
+        description=payload.description,
+        video_url=video_url,
+        thumbnail_url=thumbnail_url,
+        duration_seconds=payload.duration_seconds,
+    )
+    db.commit()
+
+    if payload.product_ids:
+        try:
+            set_video_products(db, record.id, user.id, [int(x) for x in payload.product_ids])
+            db.commit()
+        except Exception as err:
+            logging.getLogger(__name__).warning("Không gắn được sản phẩm khi tạo video direct: %s", err)
+
+    return {
+        "id": record.id,
+        "video_url": resolve_media_url(record.video_url),
+        "thumbnail_url": resolve_media_url(record.thumbnail_url),
+        "duration_seconds": record.duration_seconds,
+    }
+
 
 @router.post("", status_code=201)
 def create_video(
