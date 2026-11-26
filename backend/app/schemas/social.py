@@ -19,6 +19,9 @@ class CommentOut(BaseModel):
     parent_id: int | None
     content: str
     created_at: datetime
+    username: str | None = None
+    display_name: str | None = None
+    avatar_url: str | None = None
 
 
 class ChatLogCreate(BaseModel):

@@ -612,11 +612,14 @@ function renderSingleCommentRow(comment) {
   const isAdmin = currentU && currentU.role === "ADMIN";
   const canDelete = isCommentOwner || isVideoOwner || isAdmin;
 
+  const authorName = comment.display_name || comment.username || `User #${comment.user_id}`;
+  const avatarSrc = comment.avatar_url || "../assets/images/logo.svg";
+
   row.innerHTML = `
-    <img src="../assets/images/logo.svg" alt="avatar" class="comment-avatar">
+    <img src="${escapeHtml(avatarSrc)}" alt="${escapeHtml(authorName)}" class="comment-avatar" onerror="this.src='../assets/images/logo.svg'">
     <div class="comment-content-box">
       <div class="comment-author-name">
-        <a href="profile.html?id=${comment.user_id}" style="color:inherit;text-decoration:none;">User #${comment.user_id}</a>
+        <a href="profile.html?id=${comment.user_id}" style="color:inherit;text-decoration:none;">${escapeHtml(authorName)}</a>
         <span class="comment-time">${formatTimeAgo(comment.created_at)}</span>
       </div>
       <div class="comment-text">
@@ -646,7 +649,7 @@ function renderSingleCommentRow(comment) {
   if (replyBtn) {
     replyBtn.addEventListener("click", () => {
       replyingCommentId = comment.id;
-      replyingUsername = `User #${comment.user_id}`;
+      replyingUsername = authorName;
       const replyUserEl = document.getElementById("single-reply-user");
       const bannerEl = document.getElementById("single-reply-banner");
       const inputEl = document.getElementById("single-comment-input");

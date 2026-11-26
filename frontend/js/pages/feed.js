@@ -579,12 +579,14 @@ function createCommentRow(comment) {
   const canDelete = currentU && (currentU.id === comment.user_id || currentU.role === "ADMIN");
 
   const formattedTime = formatTimeAgo(comment.created_at);
+  const authorName = comment.display_name || comment.username || `User #${comment.user_id}`;
+  const avatarSrc = comment.avatar_url || "../assets/images/logo.svg";
 
   row.innerHTML = `
-    <img src="../assets/images/logo.svg" alt="avatar" class="comment-avatar">
+    <img src="${escapeHtml(avatarSrc)}" alt="${escapeHtml(authorName)}" class="comment-avatar" onerror="this.src='../assets/images/logo.svg'">
     <div class="comment-content-box">
       <div class="comment-author-name">
-        <a href="profile.html?user_id=${comment.user_id}" style="color:inherit;text-decoration:none;">User #${comment.user_id}</a>
+        <a href="profile.html?user_id=${comment.user_id}" style="color:inherit;text-decoration:none;">${escapeHtml(authorName)}</a>
         <span class="comment-time">${formattedTime}</span>
       </div>
       <div class="comment-text">
@@ -592,7 +594,7 @@ function createCommentRow(comment) {
         ${escapeHtml(comment.content)}
       </div>
       <div class="comment-actions">
-        <button class="comment-act-btn reply-btn" data-id="${comment.id}" data-author="User #${comment.user_id}">Trả lời</button>
+        <button class="comment-act-btn reply-btn" data-id="${comment.id}" data-author="${escapeHtml(authorName)}">Trả lời</button>
         ${canDelete ? `<button class="comment-act-btn delete" data-id="${comment.id}">Xóa</button>` : ""}
       </div>
     </div>
@@ -603,7 +605,7 @@ function createCommentRow(comment) {
   if (replyBtn) {
     replyBtn.addEventListener("click", () => {
       currentReplyingCommentId = comment.id;
-      currentReplyingUsername = `User #${comment.user_id}`;
+      currentReplyingUsername = authorName;
       document.getElementById("reply-to-user").innerText = `@${currentReplyingUsername}`;
       document.getElementById("reply-banner").classList.add("active");
       const input = document.getElementById("input-comment-text");

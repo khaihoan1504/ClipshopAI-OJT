@@ -3,6 +3,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.avatar import avatar_url_from_key
 from app.dependencies.auth import get_current_user, get_optional_user
 from app.crud import social as crud
 from app.crud import notification as notif_crud
@@ -127,6 +128,20 @@ def unlike_video(
     return {"message": "Đã bỏ thích", "liked": False}
 
 
+def _serialize_comment(comment: Comment, author: User | None) -> dict:
+    return {
+        "id": comment.id,
+        "user_id": comment.user_id,
+        "video_id": comment.video_id,
+        "parent_id": comment.parent_id,
+        "content": comment.content,
+        "created_at": comment.created_at,
+        "username": author.username if author else None,
+        "display_name": author.display_name if author else None,
+        "avatar_url": avatar_url_from_key(author.avatar_key) if author and author.avatar_key else None,
+    }
+
+
 # 3. THEM BINH LUAN / TRA LOI
 @router.post(
     "/videos/{video_id}/comments",
@@ -204,7 +219,7 @@ def create_comment(
             409, "Không thể tạo bình luận"
         )
 
-    return comment
+    return _serialize_comment(comment, user)
 
 
 # 4. XEM BINH LUAN
@@ -223,13 +238,15 @@ def list_comments(
     if skip < 0 or not 1 <= limit <= 100:
         raise HTTPException(422, "Phân trang không hợp lệ")
 
-    return db.scalars(
-        select(Comment)
+    rows = db.execute(
+        select(Comment, User)
+        .outerjoin(User, User.id == Comment.user_id)
         .where(Comment.video_id == video_id)
         .order_by(Comment.created_at, Comment.id)
         .offset(skip)
         .limit(limit)
     ).all()
+    return [_serialize_comment(comment, author) for comment, author in rows]
 
 
 # 5. XOA BINH LUAN
