@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from PIL import Image
 from sqlalchemy.orm import Session
 
+from app.core.storage import get_storage
 from app.crud import product as product_crud
 from app.crud import shop as shop_crud
 from app.db.session import get_db
@@ -328,8 +329,7 @@ def upload_product_images(
             detail="Vui lòng chọn ít nhất 1 tệp ảnh để tải lên",
         )
 
-    PRODUCT_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
-    saved_paths: list[Path] = []
+    storage = get_storage()
     object_keys: list[str] = []
 
     try:
@@ -367,17 +367,18 @@ def upload_product_images(
                 ) from error
 
             filename = f"{uuid4().hex}.{norm_ext}"
-            dest_path = PRODUCT_UPLOADS_DIR / filename
-            dest_path.write_bytes(raw_bytes)
-            saved_paths.append(dest_path)
-            object_keys.append(f"/uploads/products/{filename}")
+            content_type = f"image/{'jpeg' if norm_ext == 'jpg' else norm_ext}"
+            saved_url = storage.save(
+                BytesIO(raw_bytes), f"products/{filename}", content_type=content_type
+            )
+            object_keys.append(saved_url)
 
         return product_crud.add_product_images(db, product.id, object_keys)
     except Exception:
-        for path in saved_paths:
+        for saved_url in object_keys:
             try:
-                path.unlink(missing_ok=True)
-            except OSError:
+                storage.delete(saved_url)
+            except Exception:
                 pass
         raise
 
@@ -401,4 +402,8 @@ def delete_product_image(
         )
 
     object_key = product_crud.delete_product_image(db, image)
-    _remove_local_upload(object_key)
+    if object_key:
+        try:
+            get_storage().delete(object_key)
+        except Exception:
+            pass

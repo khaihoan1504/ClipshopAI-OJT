@@ -255,6 +255,9 @@ def serialize_product_item(p: Product) -> dict:
     if not thumb:
         thumb = getattr(p, "thumbnail_url", None)
 
+    from app.core.storage import resolve_media_url
+    thumb = resolve_media_url(thumb)
+
     return {
         "id": p.id,
         "shop_id": p.shop_id,

@@ -5,8 +5,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.core.storage import resolve_media_url
 from app.schemas.product_image import ProductImageOut as SellerProductImageOut
 
 
@@ -26,6 +27,11 @@ class ShopBriefOut(BaseModel):
     logo_url: str | None = None
     description: str | None = None
     status: str
+
+    @field_validator("logo_url", mode="after")
+    @classmethod
+    def _resolve_logo_url(cls, value: str | None) -> str | None:
+        return resolve_media_url(value)
 
 
 class CategoryBriefOut(BaseModel):
@@ -48,6 +54,11 @@ class ProductImageOut(BaseModel):
     display_order: int = 0
     created_at: datetime | None = None
 
+    @field_validator("object_key", "image_url", mode="after")
+    @classmethod
+    def _resolve_image_urls(cls, value: str | None) -> str | None:
+        return resolve_media_url(value)
+
 
 class VideoBriefOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -59,6 +70,11 @@ class VideoBriefOut(BaseModel):
     thumbnail_url: str | None = None
     duration_seconds: int = 0
     view_count: int = 0
+
+    @field_validator("video_url", "thumbnail_url", mode="after")
+    @classmethod
+    def _resolve_video_urls(cls, value: str | None) -> str | None:
+        return resolve_media_url(value)
 
 
 # --- Base & Create/Update ---
@@ -139,6 +155,11 @@ class ProductListItemOut(BaseModel):
     status: str
     created_at: datetime
 
+    @field_validator("thumbnail_url", mode="after")
+    @classmethod
+    def _resolve_thumbnail_url(cls, value: str | None) -> str | None:
+        return resolve_media_url(value)
+
 
 class ProductListResponse(BaseModel):
     """Kết quả phân trang danh sách sản phẩm."""
@@ -162,6 +183,11 @@ class ProductDetailOut(BaseModel):
     thumbnail_url: str | None = None
     status: str
     created_at: datetime
+
+    @field_validator("thumbnail_url", mode="after")
+    @classmethod
+    def _resolve_thumbnail_url(cls, value: str | None) -> str | None:
+        return resolve_media_url(value)
     updated_at: datetime | None = None
 
     # Thông tin Shop

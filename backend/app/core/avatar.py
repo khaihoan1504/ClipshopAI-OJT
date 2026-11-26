@@ -16,6 +16,7 @@ import filetype
 from PIL import Image, ImageOps
 
 from app.core.config import settings
+from app.core.storage import R2Storage, get_storage, resolve_media_url
 
 UPLOADS_DIR = Path(__file__).resolve().parents[2] / "uploads"
 AVATAR_DIR_NAME = "avatars"
@@ -43,7 +44,11 @@ def avatar_url_from_key(key: str | None) -> str | None:
     if not key:
         return None
     if key.startswith(("http://", "https://")):
-        return key  # dữ liệu cũ/seed lưu sẵn URL tuyệt đối
+        return resolve_media_url(key)  # dữ liệu cũ/seed hoặc URL R2 đầy đủ
+    if (settings.STORAGE_DRIVER or "").strip().lower() == "r2" and settings.R2_PUBLIC_URL:
+        return resolve_media_url(
+            f"{settings.R2_PUBLIC_URL.rstrip('/')}/{key.lstrip('/')}"
+        )
     base = settings.PUBLIC_BASE_URL.rstrip("/")
     return f"{base}/uploads/{key.lstrip('/')}"
 
@@ -95,18 +100,30 @@ def validate_and_reencode(data: bytes) -> tuple[bytes, str]:
 
 def save_avatar(data: bytes, extension: str, uploads_dir: Path | None = None) -> str:
     """Ghi ảnh với tên ngẫu nhiên, trả về avatar_key để lưu vào DB."""
+    filename = f"{uuid4().hex}.{extension}"
+    key = f"{AVATAR_DIR_NAME}/{filename}"
+    if uploads_dir is None:
+        storage = get_storage()
+        if isinstance(storage, R2Storage):
+            content_type = "image/jpeg" if extension == "jpg" else "image/png"
+            storage.save(io.BytesIO(data), key, content_type=content_type)
+            return key
     folder = (uploads_dir or UPLOADS_DIR) / AVATAR_DIR_NAME
     folder.mkdir(parents=True, exist_ok=True)
-    filename = f"{uuid4().hex}.{extension}"
     with (folder / filename).open("xb") as output:
         output.write(data)
-    return f"{AVATAR_DIR_NAME}/{filename}"
+    return key
 
 
 def remove_avatar_file(key: str | None, uploads_dir: Path | None = None) -> None:
     """Xóa file avatar cũ. Chỉ xóa key đúng định dạng do hệ thống tạo ra."""
     if not key or not _AVATAR_KEY_PATTERN.fullmatch(key):
         return
+    if uploads_dir is None:
+        storage = get_storage()
+        if isinstance(storage, R2Storage):
+            storage.delete(key)
+            return
     path = (uploads_dir or UPLOADS_DIR) / key
     try:
         path.unlink(missing_ok=True)

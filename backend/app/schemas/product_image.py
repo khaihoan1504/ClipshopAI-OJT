@@ -1,7 +1,9 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
+
+from app.core.storage import resolve_media_url
 
 
 class ProductImageCreate(BaseModel):
@@ -26,3 +28,8 @@ class ProductImageOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("object_key", mode="after")
+    @classmethod
+    def _resolve_object_key(cls, value: str) -> str:
+        return resolve_media_url(value) or value

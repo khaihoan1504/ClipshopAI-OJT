@@ -28,6 +28,7 @@ from PIL import Image
 from sqlalchemy.orm import Session
 
 from app.core.security import decode_access_token
+from app.core.storage import get_storage
 from app.crud import product as product_crud
 from app.crud import seller_application as sa_crud
 from app.crud import shop as shop_crud
@@ -368,12 +369,14 @@ def _save_shop_logo_file(db: Session, shop, upload: UploadFile):
             detail="Tệp tải lên bị hỏng hoặc không đúng định dạng ảnh",
         ) from error
 
-    SHOP_UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
     filename = f"{uuid4().hex}.{norm_ext}"
-    dest_path = SHOP_UPLOADS_DIR / filename
-    dest_path.write_bytes(raw_bytes)
+    storage = get_storage()
+    content_type = f"image/{'jpeg' if norm_ext == 'jpg' else norm_ext}"
+    saved_url = storage.save(
+        BytesIO(raw_bytes), f"shops/{filename}", content_type=content_type
+    )
 
-    shop.avatar_key = f"/uploads/shops/{filename}"
+    shop.avatar_key = saved_url
     db.commit()
     db.refresh(shop)
     return shop

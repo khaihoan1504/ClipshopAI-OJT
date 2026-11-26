@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.core.storage import resolve_media_url
+
 
 class ShopCreate(BaseModel):
     owner_id: int | None = None
@@ -31,6 +33,11 @@ class ShopOut(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("avatar_key", mode="after")
+    @classmethod
+    def _resolve_avatar_key(cls, value: str | None) -> str | None:
+        return resolve_media_url(value)
 
 
 OrderStatusLiteral = Literal[
@@ -64,6 +71,11 @@ class BestSellingProductItem(BaseModel):
     total_quantity_sold: int
     total_revenue: float
     thumbnail_url: str | None = None
+
+    @field_validator("thumbnail_url", mode="after")
+    @classmethod
+    def _resolve_thumbnail_url(cls, value: str | None) -> str | None:
+        return resolve_media_url(value)
 
 
 class ShopAnalyticsOut(BaseModel):

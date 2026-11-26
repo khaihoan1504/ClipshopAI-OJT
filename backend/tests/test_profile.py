@@ -35,6 +35,8 @@ def db_session():
 
 @pytest.fixture()
 def uploads(tmp_path, monkeypatch):
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "STORAGE_DRIVER", "local")
     monkeypatch.setattr(avatar_module, "UPLOADS_DIR", tmp_path)
     return tmp_path
 
