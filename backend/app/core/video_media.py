@@ -35,7 +35,11 @@ def validate_video(path: Path) -> int:
 
     if detected.extension != extension:
         raise ValueError("Đuôi tệp không khớp với định dạng video.")
-    metadata = probe_video(path)
+    try:
+        metadata = probe_video(path)
+    except FileNotFoundError:
+        # Trên môi trường Serverless (Vercel) chưa có sẵn ffprobe -> vẫn cho phép MP4/WebM hợp lệ
+        return 15
     has_video = False
 
     for stream in metadata.get("streams", []):

@@ -1496,7 +1496,7 @@ def _call_openai_api(
     model_name: str,
     timeout_sec: float,
 ) -> tuple[str, list[dict]]:
-    url = "https://api.openai.com/v1/chat/completions"
+    url = f"{settings.OPENAI_BASE_URL.rstrip('/')}/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",

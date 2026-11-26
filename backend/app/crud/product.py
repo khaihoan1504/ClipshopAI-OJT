@@ -553,7 +553,7 @@ def generate_seller_ai_content(
         try:
             with httpx.Client(timeout=timeout_sec) as client:
                 resp = client.post(
-                    "https://api.openai.com/v1/chat/completions",
+                    f"{settings.OPENAI_BASE_URL.rstrip('/')}/chat/completions",
                     headers={
                         "Authorization": f"Bearer {openai_key}",
                         "Content-Type": "application/json",

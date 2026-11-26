@@ -115,13 +115,17 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title=settings.APP_NAME, lifespan=lifespan)
 
 uploads_dir = Path(__file__).resolve().parents[1] / "uploads"
-(uploads_dir / "videos").mkdir(parents=True, exist_ok=True)
-(uploads_dir / "thumbnails").mkdir(parents=True, exist_ok=True)
-(uploads_dir / "covers").mkdir(parents=True, exist_ok=True)
-(uploads_dir / "products").mkdir(parents=True, exist_ok=True)
-(uploads_dir / "avatars").mkdir(parents=True, exist_ok=True)
+try:
+    (uploads_dir / "videos").mkdir(parents=True, exist_ok=True)
+    (uploads_dir / "thumbnails").mkdir(parents=True, exist_ok=True)
+    (uploads_dir / "covers").mkdir(parents=True, exist_ok=True)
+    (uploads_dir / "products").mkdir(parents=True, exist_ok=True)
+    (uploads_dir / "avatars").mkdir(parents=True, exist_ok=True)
+except OSError:
+    pass
 
-app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
+if uploads_dir.is_dir():
+    app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 # CORS: cho phép trang FE (khác cổng/khác domain) gọi được API này
 app.add_middleware(

@@ -1,5 +1,5 @@
-from sqlalchemy import CheckConstraint, Column, DateTime, ForeignKey, Index, String, Text, func, text
-from sqlalchemy.dialects.mysql import BIGINT, ENUM, INTEGER, JSON
+from sqlalchemy import CheckConstraint, Column, DateTime, Enum, ForeignKey, Index, String, Text, func, text
+from sqlalchemy.dialects.mysql import BIGINT, INTEGER, JSON
 
 from app.db.session import Base
 
@@ -26,7 +26,9 @@ class Video(Base):
     duration_seconds = Column(INTEGER(unsigned=True), nullable=False)
     view_count = Column(BIGINT(unsigned=True), nullable=False, server_default=text("0"))
     status = Column(
-        ENUM("VISIBLE", "HIDDEN"), nullable=False, server_default="VISIBLE"
+        Enum("VISIBLE", "HIDDEN", name="video_status", native_enum=False),
+        nullable=False,
+        server_default="VISIBLE",
     )
     created_at = Column(DateTime, nullable=False, server_default=func.now())
     # Kiểm duyệt (Admin ẩn video vi phạm): lý do, người ẩn, thời điểm. NULL = chưa bị Admin ẩn.

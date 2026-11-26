@@ -1,8 +1,27 @@
-"""Kết nối MySQL bằng SQLAlchemy."""
+"""Kết nối MySQL hoặc PostgreSQL (Supabase) bằng SQLAlchemy."""
 from sqlalchemy import create_engine
+from sqlalchemy.dialects.mysql import BIGINT as MYSQL_BIGINT
+from sqlalchemy.dialects.mysql import INTEGER as MYSQL_INTEGER
+from sqlalchemy.dialects.mysql import JSON as MYSQL_JSON
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.core.config import settings
+
+
+@compiles(MYSQL_BIGINT, "postgresql")
+def _compile_bigint_pg(type_, compiler, **kw):
+    return "BIGINT"
+
+
+@compiles(MYSQL_INTEGER, "postgresql")
+def _compile_int_pg(type_, compiler, **kw):
+    return "INTEGER"
+
+
+@compiles(MYSQL_JSON, "postgresql")
+def _compile_json_pg(type_, compiler, **kw):
+    return "JSONB"
 
 # engine: "đường ống" tới MySQL. pool_pre_ping giúp tự nối lại khi MySQL ngắt kết nối cũ.
 engine = create_engine(settings.database_url, pool_pre_ping=True)

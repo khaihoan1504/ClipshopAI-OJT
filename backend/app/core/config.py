@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     DB_USER: str = "root"
     DB_PASSWORD: str = ""
     DB_NAME: str = "app_db"
+    # Nếu có DATABASE_URL (vd Supabase PostgreSQL) sẽ ưu tiên dùng thay cho DB_HOST/DB_NAME
+    DATABASE_URL: str = ""
 
     # Chuỗi các origin cách nhau bằng dấu phẩy, hoặc "*"
     CORS_ORIGINS: str = "*"
@@ -37,6 +39,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.0-flash"
     OPENAI_API_KEY: str = ""
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     OPENAI_MODEL: str = "gpt-4o-mini"
     AI_PROVIDER: str = "auto"
     AI_TIMEOUT_SECONDS: float = 15.0
@@ -52,6 +55,14 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
+        raw_url = (self.DATABASE_URL or "").strip()
+        if raw_url:
+            if raw_url.startswith("postgres://"):
+                return "postgresql+psycopg2://" + raw_url[len("postgres://") :]
+            if raw_url.startswith("postgresql://"):
+                return "postgresql+psycopg2://" + raw_url[len("postgresql://") :]
+            return raw_url
+
         # mysql+pymysql://user:password@host:port/database
         # quote_plus: để mật khẩu có ký tự đặc biệt (@, #, /...) không làm hỏng URL
         return (

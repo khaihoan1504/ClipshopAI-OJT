@@ -108,7 +108,7 @@ def create_video(
     user: User = Depends(get_video_user),
     db: Session = Depends(get_db),
 ):
-        with TemporaryDirectory(dir=UPLOADS_DIR.parent) as directory:
+        with TemporaryDirectory() as directory:
             temp_dir = Path(directory)
 
             try:
