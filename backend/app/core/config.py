@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     OPENAI_BASE_URL: str = "https://api.openai.com/v1"
     OPENAI_MODEL: str = "gpt-4o-mini"
     AI_PROVIDER: str = "auto"
-    AI_TIMEOUT_SECONDS: float = 15.0
+    AI_TIMEOUT_SECONDS: float = 45.0
     AI_DAILY_QUESTION_LIMIT: int = 20
 
     # Cấu hình lưu trữ tệp tin: Local hoặc Cloudflare R2 (Task T3D2BC7)

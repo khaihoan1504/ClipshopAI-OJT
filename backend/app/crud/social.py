@@ -1651,7 +1651,7 @@ def generate_ai_shopping_reply(
     provider_pref = (settings.AI_PROVIDER or "auto").strip().lower()
     gemini_key = (settings.GEMINI_API_KEY or "").strip()
     openai_key = (settings.OPENAI_API_KEY or "").strip()
-    timeout_sec = max(1.0, float(settings.AI_TIMEOUT_SECONDS or 15.0))
+    timeout_sec = max(1.0, float(settings.AI_TIMEOUT_SECONDS or 45.0))
 
     if provider_pref == "gemini" or (provider_pref == "auto" and gemini_key):
         if not gemini_key:

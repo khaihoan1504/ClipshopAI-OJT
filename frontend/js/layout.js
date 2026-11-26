@@ -552,7 +552,7 @@ function initAiChatbotWidget() {
     listEl.scrollTop = listEl.scrollHeight;
 
     try {
-      const res = await api.post("/ai/chat", { message: text }, { timeout: 45000 });
+      const res = await api.post("/ai/chat", { message: text }, { timeout: 60000 });
       typingRow.remove();
 
       appendAiMessage(
