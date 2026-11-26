@@ -1,11 +1,13 @@
 {
+  "redirects": [
+    { "source": "/", "destination": "/pages/feed.html", "permanent": false }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.py" },
     { "source": "/auth/(.*)", "destination": "/api/index.py" },
     { "source": "/docs", "destination": "/api/index.py" },
     { "source": "/openapi.json", "destination": "/api/index.py" },
     { "source": "/video/(.*)", "destination": "/api/index.py" },
-    { "source": "/", "destination": "/frontend/pages/feed.html" },
     { "source": "/(pages|css|js|assets)/(.*)", "destination": "/frontend/$1/$2" }
   ]
 }
